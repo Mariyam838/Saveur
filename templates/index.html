@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Saveur — Food Recipe Finder</title>
+<!-- Hide splash instantly if already seen -->
+<script>if(sessionStorage.getItem('splashShown')){document.documentElement.style.setProperty('--splash-display','none')}</script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+:root{
+  --ink:#1A1410;--warm:#F5F0E8;--card:#FFFFFF;
+  --gold:#C9922A;--gold2:#E8B84B;
+  --text:#2C2418;--muted:#8A7D6E;--light:#EDE5D8;--border:#E2D9C8;
+  --rose:#B84A44;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--warm);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:9998}
+
+/* ═══ SPLASH ═══ */
+#splash{position:fixed;inset:0;z-index:9999;background:var(--ink);display:var(--splash-display,flex);flex-direction:column;align-items:center;justify-content:center;transition:opacity .9s,visibility .9s}
+#splash.gone{opacity:0;visibility:hidden;pointer-events:none}
+.sp-ring{position:relative;width:120px;height:120px;margin-bottom:30px}
+.sp-ring svg{width:120px;height:120px;animation:rSpin 2s linear infinite}
+.sp-ring svg:last-of-type{position:absolute;inset:0;animation:rSpin 1.5s linear infinite reverse;opacity:.4}
+@keyframes rSpin{to{transform:rotate(360deg)}}
+.sp-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.6rem;animation:spPop .7s .4s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes spPop{from{transform:scale(0) rotate(-20deg)}to{transform:none}}
+.sp-name{font-family:'Playfair Display',serif;font-size:3rem;font-weight:900;color:#F5F0E8;letter-spacing:6px;text-transform:uppercase;animation:spUp .7s .3s both}
+.sp-name b{color:var(--gold)}
+.sp-tag{font-size:.57rem;font-weight:600;letter-spacing:5px;text-transform:uppercase;color:rgba(245,240,232,.28);margin-top:6px;margin-bottom:38px;animation:spUp .7s .45s both}
+@keyframes spUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.sp-prog{width:160px;height:2px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;animation:spUp .4s .5s both}
+.sp-fill{height:100%;background:linear-gradient(90deg,transparent,var(--gold),var(--gold2),transparent);animation:spBar 2.2s .5s ease forwards}
+@keyframes spBar{from{width:0;opacity:0}20%{opacity:1}to{width:100%}}
+
+/* ═══ NAV ═══ */
+nav{position:sticky;top:0;z-index:400;height:62px;background:rgba(245,240,232,.93);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 52px;transition:box-shadow .3s}
+nav.sh{box-shadow:0 2px 18px rgba(26,20,16,.07)}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:var(--ink);letter-spacing:2px;text-decoration:none;display:flex;align-items:center;gap:8px}
+.logo-gem{width:22px;height:22px;background:var(--gold);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:white}
+.nav-pills{display:flex;gap:4px}
+.np{padding:6px 13px;border-radius:50px;font-size:.62rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:all .18s}
+.np:hover{background:var(--light);color:var(--text)}
+@media(max-width:740px){.nav-pills{display:none}nav{padding:0 18px}}
+
+/* ═══ HERO ═══ */
+.hero{padding:72px 52px 52px;text-align:center;position:relative;overflow:hidden}
+.hero::before,.hero::after{content:'';position:absolute;border-radius:50%;border:1px solid rgba(201,146,42,.08);pointer-events:none}
+.hero::before{width:700px;height:700px;top:-310px;left:50%;transform:translateX(-50%)}
+.hero::after{width:460px;height:460px;top:-210px;left:50%;transform:translateX(-50%)}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:5px 16px;border-radius:50px;background:rgba(201,146,42,.1);border:1px solid rgba(201,146,42,.2);font-size:.6rem;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,6vw,4.8rem);font-weight:900;color:var(--ink);line-height:.98;letter-spacing:-1px;margin-bottom:12px}
+.hero h1 em{font-style:italic;color:var(--gold);display:block}
+.hero p{font-size:.86rem;font-weight:300;color:var(--muted);max-width:420px;margin:0 auto 42px;line-height:1.75}
+
+/* ═══ SEARCH ═══ */
+.sw{max-width:580px;margin:0 auto}
+.s-tabs{display:flex;gap:2px;background:var(--light);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;padding:4px 4px 0;width:fit-content}
+.st{padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;background:transparent;color:var(--muted);border:none;border-radius:7px 7px 0 0;cursor:pointer;transition:all .18s;white-space:nowrap}
+.st:hover{color:var(--text)}
+.st.on{background:var(--card);color:var(--ink);box-shadow:inset 0 -2px 0 var(--gold)}
+.s-bar{display:flex;align-items:stretch;background:var(--card);border:1.5px solid var(--border);border-radius:0 10px 10px 10px;overflow:hidden;box-shadow:0 4px 16px rgba(26,20,16,.07);transition:border-color .25s,box-shadow .25s}
+.s-bar:focus-within{border-color:rgba(201,146,42,.55);box-shadow:0 4px 16px rgba(201,146,42,.12)}
+.s-ico{padding:0 0 0 18px;display:flex;align-items:center;color:var(--muted);font-size:1rem}
+.s-in{flex:1;padding:15px 12px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:300;background:transparent;color:var(--ink);border:none;outline:none}
+.s-in::placeholder{color:rgba(138,125,110,.4)}
+.s-go{margin:5px;padding:0 24px;background:var(--ink);color:var(--warm);border:none;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;transition:background .18s;white-space:nowrap}
+.s-go:hover{background:var(--gold)}
+
+/* ═══ BROWSE PANELS ═══ */
+.browse-panel{display:none;padding:28px 52px 52px;max-width:1280px;margin:0 auto}
+.browse-panel.active{display:block}
+@media(max-width:700px){.browse-panel{padding:20px 16px 40px}}
+
+.bs-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.bs-label{font-size:.6rem;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.bs-line{flex:1;height:1px;background:var(--border)}
+.bs-count{font-size:.57rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:var(--light);border:1px solid var(--border);padding:3px 10px;border-radius:50px;white-space:nowrap}
+
+/* ═══ CIRCLE ROW ═══ */
+.circles-row{
+  display:flex;gap:18px;
+  overflow-x:auto;padding-bottom:10px;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+.circles-row::-webkit-scrollbar{height:4px}
+.circles-row::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+.ci{
+  flex:0 0 96px;
+  display:flex;flex-direction:column;align-items:center;gap:9px;
+  cursor:pointer;scroll-snap-align:start;
+  animation:ciIn .4s calc(var(--i)*.05s) both;
+}
+@keyframes ciIn{from{opacity:0;transform:scale(.85) translateY(8px)}to{opacity:1;transform:none}}
+
+/* The circle photo */
+.ci-ring{
+  width:84px;height:84px;border-radius:50%;
+  background:var(--light);
+  border:2px solid var(--border);
+  overflow:hidden;position:relative;
+  transition:transform .28s cubic-bezier(.34,1.56,.64,1),border-color .2s,box-shadow .2s;
+  box-shadow:0 2px 8px rgba(26,20,16,.06);
+  flex-shrink:0;
+}
+.ci:hover .ci-ring{transform:scale(1.1) translateY(-4px);border-color:var(--gold);box-shadow:0 10px 26px rgba(201,146,42,.22)}
+.ci.sel .ci-ring{border-color:var(--gold);border-width:2.5px;box-shadow:0 0 0 4px rgba(201,146,42,.14),0 8px 22px rgba(201,146,42,.2)}
+
+/* Meal photo (fill circle) */
+.ci-ring img.cover{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+.ci:hover .ci-ring img.cover{transform:scale(1.1)}
+
+/* Ingredient photo (contain, white bg) */
+.ci-ring img.contain{width:100%;height:100%;object-fit:contain;padding:10px;background:#FAFAF6;display:block}
+
+/* Fallback when image fails */
+.ci-fb{
+  position:absolute;inset:0;border-radius:50%;
+  background:var(--light);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;
+}
+/* Hide fallback by default; show when img has error class */
+.ci-fb{display:none}
+img.broken + .ci-fb{display:flex!important}
+
+/* Selected tick */
+.ci-tick{position:absolute;inset:0;border-radius:50%;background:rgba(201,146,42,.82);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;font-size:1.5rem;color:white;font-weight:700}
+.ci.sel .ci-tick{display:flex}
+
+.ci-name{font-size:.7rem;font-weight:600;color:var(--text);text-align:center;line-height:1.3;transition:color .18s;width:88px}
+.ci:hover .ci-name,.ci.sel .ci-name{color:var(--gold)}
+.ci-code{display:block;font-size:.54rem;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:1px}
+.ci.sel .ci-code{color:var(--gold)}
+
+/* Name tab suggestions */
+.name-sugs{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 8px}
+.sug{padding:8px 18px;border:1.5px solid var(--border);border-radius:50px;font-size:.72rem;font-weight:600;color:var(--text);background:var(--card);cursor:pointer;transition:all .18s;text-decoration:none}
+.sug:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,146,42,.05)}
+
+/* ═══ RESULTS ═══ */
+.results{max-width:1280px;margin:0 auto;padding:0 52px 80px}
+@media(max-width:700px){.results{padding:0 16px 60px}}
+.res-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:26px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.res-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-style:italic;color:var(--ink)}
+.res-cnt{font-size:.6rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+
+/* ═══ RECIPE GRID ═══ */
+.rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:18px}
+.rc{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--border);cursor:pointer;box-shadow:0 2px 10px rgba(26,20,16,.04);transition:transform .3s cubic-bezier(.34,1.3,.64,1),box-shadow .3s;animation:rcIn .45s calc(var(--i)*.07s) both}
+@keyframes rcIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.rc:hover{transform:translateY(-7px) scale(1.01);box-shadow:0 18px 42px rgba(26,20,16,.11)}
+.rc-img{position:relative;height:192px;overflow:hidden}
+.rc-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
+.rc:hover .rc-img img{transform:scale(1.07)}
+.rc-ph{width:100%;height:100%;background:linear-gradient(135deg,var(--light),var(--border));display:flex;align-items:center;justify-content:center;font-size:3rem}
+.rc-cat{position:absolute;bottom:10px;left:10px;padding:4px 10px;background:rgba(245,240,232,.92);backdrop-filter:blur(6px);border-radius:50px;font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink)}
+.rc-body{padding:16px 18px 18px}
+.rc-area{font-size:.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+.rc-name{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--ink);line-height:1.3;margin-bottom:14px}
+.rc-link{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:var(--ink);color:var(--warm);border-radius:50px;font-size:.6rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;text-decoration:none;transition:background .18s}
+.rc-link:hover{background:var(--gold)}
+.rc-link span{transition:transform .18s}
+.rc-link:hover span{transform:translateX(3px)}
+
+/* ═══ EMPTY ═══ */
+.empty{text-align:center;padding:70px 20px}
+.e-ring{width:92px;height:92px;border-radius:50%;background:var(--light);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.6rem;margin:0 auto 20px}
+.e-t{font-family:'Playfair Display',serif;font-size:1.7rem;font-style:italic;color:var(--ink);margin-bottom:10px}
+.e-s{color:var(--muted);font-size:.8rem;font-weight:300;line-height:1.6}
+.flash{background:rgba(184,74,68,.08);border:1px solid rgba(184,74,68,.22);color:var(--rose);padding:12px 20px;border-radius:8px;margin-bottom:22px;font-size:.8rem;text-align:center}
+
+/* ═══ FOOTER ═══ */
+footer{border-top:1px solid var(--border);padding:24px 52px;display:flex;justify-content:space-between;color:var(--muted);font-size:.62rem;letter-spacing:1px;text-transform:uppercase}
+footer a{color:var(--gold);text-decoration:none}
+@media(max-width:600px){footer{flex-direction:column;gap:6px;text-align:center;padding:18px}}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-ring">
+    <svg viewBox="0 0 120 120" fill="none">
+      <circle cx="60" cy="60" r="54" stroke="rgba(201,146,42,0.15)" stroke-width="1"/>
+      <circle cx="60" cy="60" r="54" stroke="url(#g1)" stroke-width="1.5" stroke-dasharray="90 250" stroke-linecap="round"/>
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse"><stop stop-color="#C9922A"/><stop offset="1" stop-color="transparent"/></linearGradient></defs>
+    </svg>
+    <svg viewBox="0 0 120 120" fill="none" style="position:absolute;inset:0">
+      <circle cx="60" cy="60" r="40" stroke="rgba(201,146,42,0.1)" stroke-width="1"/>
+      <circle cx="60" cy="60" r="40" stroke="url(#g2)" stroke-width="1" stroke-dasharray="55 196" stroke-linecap="round"/>
+      <defs><linearGradient id="g2" x1="120" y1="0" x2="0" y2="120" gradientUnits="userSpaceOnUse"><stop stop-color="#E8B84B"/><stop offset="1" stop-color="transparent"/></linearGradient></defs>
+    </svg>
+    <div class="sp-icon">🍽️</div>
+  </div>
+  <div class="sp-name">Sa<b>v</b>eur</div>
+  <div class="sp-tag">Discover · Cook · Savour</div>
+  <div class="sp-prog"><div class="sp-fill"></div></div>
+</div>
+
+<!-- NAV -->
+<nav id="nb">
+  <a class="nav-logo" href="/"><div class="logo-gem">✦</div>Saveur</a>
+  <div class="nav-pills">
+    <a class="np" href="/?tab=area">🌍 Cuisines</a>
+    <a class="np" href="/?tab=category">🍽️ Categories</a>
+    <a class="np" href="/?tab=ingredient">🥕 Ingredients</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow">✦ World Cuisine Explorer</div>
+  <h1>Find Your Next<br><em>Favourite Dish</em></h1>
+  <p>Search by name, browse by cuisine, pick a category or ingredient — thousands of recipes await.</p>
+
+  <div class="sw">
+    <div class="s-tabs" id="tabs">
+      <button class="st" data-t="name"       data-panel="panel-name">By Name</button>
+      <button class="st" data-t="category"   data-panel="panel-category">Category</button>
+      <button class="st" data-t="area"       data-panel="panel-area">Cuisine</button>
+      <button class="st" data-t="ingredient" data-panel="panel-ingredient">Ingredient</button>
+    </div>
+    <form action="/search" method="get" id="sf">
+      <input type="hidden" name="type" id="tf" value="{{ search_type }}"/>
+      <div class="s-bar">
+        <div class="s-ico">🔍</div>
+        <input class="s-in" type="text" name="q" id="si"
+          value="{{ query }}" placeholder="Search recipes…" autocomplete="off"/>
+        <button type="submit" class="s-go">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════ PANEL: By Name ════════ -->
+<div class="browse-panel" id="panel-name">
+  <div class="bs-head">
+    <div class="bs-label">Popular Searches</div>
+    <div class="bs-line"></div>
+  </div>
+  <div class="name-sugs">
+    {% for s in ['Pasta','Chicken','Burger','Sushi','Tacos','Biryani','Steak','Salmon','Pizza','Curry','Ramen','Salad'] %}
+    <a class="sug" href="#" onclick="event.preventDefault();document.getElementById('si').value='{{ s }}';document.getElementById('sf').submit()">{{ s }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ PANEL: Category ════════ -->
+<div class="browse-panel" id="panel-category">
+  <div class="bs-head">
+    <div class="bs-label">Browse by Category</div>
+    <div class="bs-line"></div>
+    <div class="bs-count">{{ categories|length }} Categories</div>
+  </div>
+  <div class="circles-row">
+    {% for c in categories %}
+    <div class="ci {% if query==c.name and search_type=='category' %}sel{% endif %}"
+         style="--i:{{ loop.index0 }}" onclick="quickSearch('{{ c.name }}','category')">
+      <div class="ci-ring">
+        {% if c.img %}
+          <img class="cover" src="{{ c.img }}"
+               alt="{{ c.name }}"
+               onerror="this.classList.add('broken')"/>
+        {% endif %}
+        <div class="ci-fb">{{ c.icon }}</div>
+        <div class="ci-tick">✓</div>
+      </div>
+      <div class="ci-name">{{ c.icon }} {{ c.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ PANEL: Cuisine / Area ════════ -->
+<div class="browse-panel" id="panel-area">
+  <div class="bs-head">
+    <div class="bs-label">Browse by Cuisine</div>
+    <div class="bs-line"></div>
+    <div class="bs-count">{{ cuisines|length }} Cuisines</div>
+  </div>
+  <div class="circles-row">
+    {% for c in cuisines %}
+    <div class="ci {% if query==c.name and search_type=='area' %}sel{% endif %}"
+         style="--i:{{ loop.index0 }}" onclick="quickSearch('{{ c.name }}','area')">
+      <div class="ci-ring">
+        {% if c.img %}
+          <img class="cover" src="{{ c.img }}"
+               alt="{{ c.name }}"
+               onerror="this.classList.add('broken')"/>
+        {% endif %}
+        <div class="ci-fb">🌍</div>
+        <div class="ci-tick">✓</div>
+      </div>
+      <div class="ci-name">
+        <span class="ci-code">{{ c.code }}</span>
+        {{ c.name }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ PANEL: Ingredient ════════ -->
+<div class="browse-panel" id="panel-ingredient">
+  <div class="bs-head">
+    <div class="bs-label">Browse by Ingredient</div>
+    <div class="bs-line"></div>
+    <div class="bs-count">{{ ingredients|length }} Ingredients</div>
+  </div>
+  <div class="circles-row">
+    {% for ing in ingredients %}
+    <div class="ci {% if query==ing.name and search_type=='ingredient' %}sel{% endif %}"
+         style="--i:{{ loop.index0 }}" onclick="quickSearch('{{ ing.name }}','ingredient')">
+      <div class="ci-ring">
+        <img class="contain" src="{{ ing.img }}"
+             alt="{{ ing.name }}"
+             onerror="this.classList.add('broken')"/>
+        <div class="ci-fb">🥕</div>
+        <div class="ci-tick">✓</div>
+      </div>
+      <div class="ci-name">{{ ing.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ RESULTS ════════ -->
+<div class="results">
+  {% if error %}<div class="flash">{{ error }}</div>{% endif %}
+
+  {% if meals %}
+  <div class="res-head">
+    <div class="res-title">
+      {% if query %}"{{ query }}"{% else %}Featured Recipes{% endif %}
+    </div>
+    <div class="res-cnt">{{ meals|length }} recipe{% if meals|length != 1 %}s{% endif %}</div>
+  </div>
+  <div class="rg">
+    {% for m in meals %}
+    <div class="rc" style="--i:{{ loop.index0 }}">
+      <div class="rc-img">
+        {% if m.strMealThumb %}
+          <img src="{{ m.strMealThumb }}/preview" alt="{{ m.strMeal }}"
+               onerror="this.parentNode.querySelector('.rc-ph').style.display='flex';this.remove()"/>
+          <div class="rc-ph" style="display:none">🍽️</div>
+        {% else %}
+          <div class="rc-ph">🍽️</div>
+        {% endif %}
+        {% if m.strCategory %}<div class="rc-cat">{{ m.strCategory }}</div>{% endif %}
+      </div>
+      <div class="rc-body">
+        {% if m.strArea %}<div class="rc-area">📍 {{ m.strArea }}</div>{% endif %}
+        <div class="rc-name">{{ m.strMeal }}</div>
+        <a class="rc-link" href="/recipe/{{ m.idMeal }}">View Recipe <span>→</span></a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% elif not error %}
+  <div class="empty">
+    <div class="e-ring">🍴</div>
+    <div class="e-t">Begin your culinary journey</div>
+    <div class="e-s">Click a tab above to browse by cuisine, category or ingredient<br>— or search any dish by name</div>
+  </div>
+  {% endif %}
+</div>
+
+<footer>
+  <div>© 2025 Saveur · Food Recipe Finder</div>
+  <div>Powered by <a href="https://www.themealdb.com" target="_blank">TheMealDB</a></div>
+</footer>
+
+<script>
+/* Splash */
+/* Splash — only on first visit per session */
+const splash = document.getElementById('splash');
+if (sessionStorage.getItem('splashShown')) {
+  splash.classList.add('gone');
+} else {
+  sessionStorage.setItem('splashShown', '1');
+  window.addEventListener('load', () => setTimeout(() => splash.classList.add('gone'), 2500));
+}
+
+/* Nav shadow */
+window.addEventListener('scroll', () => document.getElementById('nb').classList.toggle('sh', scrollY > 20), {passive:true});
+
+/* Tab + panel system */
+const PLACEHOLDERS = {
+  name:'Search recipes by name…',
+  category:'e.g. Dessert, Seafood, Beef…',
+  area:'e.g. Italian, Japanese, Indian…',
+  ingredient:'e.g. Garlic, Tomato, Salmon…'
+};
+const tabs   = document.querySelectorAll('.st');
+const panels = document.querySelectorAll('.browse-panel');
+const tf     = document.getElementById('tf');
+const si     = document.getElementById('si');
+
+function activateTab(type) {
+  tabs.forEach(b   => b.classList.toggle('on',     b.dataset.t === type));
+  panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + type));
+  tf.value       = type;
+  si.placeholder = PLACEHOLDERS[type] || '';
+}
+
+tabs.forEach(b => b.addEventListener('click', () => { activateTab(b.dataset.t); si.focus(); }));
+
+/* Activate correct tab on load based on Jinja variable */
+activateTab('{{ search_type if search_type else "name" }}');
+
+/* Circle quick-search */
+function quickSearch(val, type) {
+  tf.value = type;
+  si.value = val;
+  document.getElementById('sf').submit();
+}
+
+/* Card scroll-reveal */
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.style.animationPlayState = 'running'; io.unobserve(e.target); }
+  }), {threshold:.08});
+  document.querySelectorAll('.rc').forEach(c => { c.style.animationPlayState = 'paused'; io.observe(c); });
+}
+</script>
+</body>
+</html>
