@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Saveur — Food Recipe Finder</title>
+<!-- Hide splash instantly if already seen -->
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+:root{
+  --ink:#1A1410;--warm:#F5F0E8;--card:#FFFFFF;
+  --gold:#C9922A;--gold2:#E8B84B;
+  --text:#2C2418;--muted:#8A7D6E;--light:#EDE5D8;--border:#E2D9C8;
+  --rose:#B84A44;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--warm);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:9998}
+
+/* ═══ SPLASH ═══ */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&display=swap');
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  display:var(--splash-display,flex);
+  flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 80% 80% at 50% 40%,#3a1c0e 0%,#1e0e06 50%,#110805 100%);
+  transition:opacity 1s cubic-bezier(.4,0,.2,1),visibility 1s;
+  overflow:hidden;
+}
+#splash.gone{opacity:0;visibility:hidden;pointer-events:none}
+
+/* Noise texture overlay */
+#splash::before{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:.045;pointer-events:none;
+}
+
+/* Ornate corner frames */
+.sp-frame{position:absolute;inset:20px;pointer-events:none}
+.sp-frame::before,.sp-frame::after,
+.sp-frame-inner::before,.sp-frame-inner::after{
+  content:'';position:absolute;
+  width:80px;height:80px;
+  border-color:rgba(212,162,58,.35);border-style:solid;
+}
+.sp-frame::before{top:0;left:0;border-width:1.5px 0 0 1.5px}
+.sp-frame::after{top:0;right:0;border-width:1.5px 1.5px 0 0}
+.sp-frame-inner::before{bottom:0;left:0;border-width:0 0 1.5px 1.5px}
+.sp-frame-inner::after{bottom:0;right:0;border-width:0 1.5px 1.5px 0}
+/* Corner jewels */
+.sp-jewel{position:absolute;width:7px;height:7px;border-radius:50%;background:rgba(212,162,58,.5);transform:translate(-50%,-50%)}
+.sp-jewel.tl{top:20px;left:20px}
+.sp-jewel.tr{top:20px;right:20px;transform:translate(50%,-50%)}
+.sp-jewel.bl{bottom:20px;left:20px;transform:translate(-50%,50%)}
+.sp-jewel.br{bottom:20px;right:20px;transform:translate(50%,50%)}
+
+/* Floating food blobs */
+.sp-blob{
+  position:absolute;font-size:9rem;opacity:.35;
+  filter:sepia(.7) hue-rotate(-10deg) brightness(.5) saturate(.6);
+  pointer-events:none;user-select:none;
+  animation:blobFloat var(--dur,18s) var(--del,0s) ease-in-out infinite alternate;
+}
+@keyframes blobFloat{
+  from{transform:translate(0,0) rotate(var(--r0,-12deg)) scale(1)}
+  to{transform:translate(var(--tx,10px),var(--ty,-18px)) rotate(var(--r1,6deg)) scale(1.05)}
+}
+.sp-blob.b1{top:-2%;left:-2%;--dur:22s;--del:0s;--r0:-18deg;--r1:4deg;--tx:20px;--ty:15px;font-size:11rem}
+.sp-blob.b2{top:-2%;right:-2%;--dur:19s;--del:-4s;--r0:14deg;--r1:-5deg;--tx:-15px;--ty:20px;font-size:11rem}
+.sp-blob.b3{bottom:-2%;left:-2%;--dur:25s;--del:-8s;--r0:8deg;--r1:-10deg;--tx:18px;--ty:-15px;font-size:11rem}
+.sp-blob.b4{bottom:-2%;right:-2%;--dur:20s;--del:-2s;--r0:-10deg;--r1:8deg;--tx:-18px;--ty:-12px;font-size:11rem}
+.sp-blob.b5{top:38%;left:-3%;--dur:17s;--del:-5s;--r0:-5deg;--r1:12deg;--tx:14px;--ty:-22px;font-size:7rem}
+.sp-blob.b6{top:35%;right:-3%;--dur:23s;--del:-9s;--r0:12deg;--r1:-6deg;--tx:-14px;--ty:16px;font-size:7rem}
+
+/* Radial glow */
+.sp-glow{
+  position:absolute;width:480px;height:480px;border-radius:50%;
+  background:radial-gradient(circle,rgba(212,162,58,.12) 0%,transparent 70%);
+  pointer-events:none;animation:glowPulse 4s ease-in-out infinite alternate;
+}
+@keyframes glowPulse{from{transform:scale(.95);opacity:.8}to{transform:scale(1.05);opacity:1}}
+
+/* Medallion badge */
+.sp-medallion{
+  width:86px;height:86px;border-radius:50%;
+  border:1.5px solid rgba(212,162,58,.45);
+  background:rgba(212,162,58,.06);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:22px;position:relative;
+  animation:spPop .8s .2s cubic-bezier(.34,1.56,.64,1) both;
+}
+.sp-medallion::before{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:1px solid rgba(212,162,58,.18);
+}
+.sp-medallion::after{
+  content:'';position:absolute;inset:-12px;border-radius:50%;
+  border:1px dashed rgba(212,162,58,.1);
+  animation:rSpin 20s linear infinite;
+}
+@keyframes rSpin{to{transform:rotate(360deg)}}
+.sp-medallion-icon{font-size:2.4rem;filter:drop-shadow(0 2px 8px rgba(212,162,58,.3))}
+
+/* Eyebrow */
+.sp-eyebrow{
+  font-size:.52rem;font-weight:600;letter-spacing:5px;text-transform:uppercase;
+  color:rgba(212,162,58,.65);margin-bottom:12px;
+  display:flex;align-items:center;gap:12px;
+  animation:spUp .6s .4s both;
+}
+.sp-eyebrow::before,.sp-eyebrow::after{content:'';width:28px;height:1px;background:rgba(212,162,58,.35)}
+
+/* Main brand */
+.sp-brand{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(3.6rem,8vw,6rem);
+  font-weight:300;letter-spacing:12px;text-transform:uppercase;
+  color:#F0E6D3;line-height:1;
+  animation:spUp .7s .5s both;
+  text-shadow:0 4px 32px rgba(212,162,58,.18);
+}
+.sp-brand em{font-style:italic;color:#D4A23A;font-weight:400}
+
+/* Sub-tagline */
+.sp-sub{
+  font-family:'Cormorant Garamond',serif;
+  font-size:.95rem;font-weight:300;font-style:italic;
+  color:rgba(240,230,211,.45);letter-spacing:2px;
+  margin-top:10px;margin-bottom:8px;
+  animation:spUp .6s .65s both;
+}
+
+/* Ornamental divider */
+.sp-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:20px 0 28px;
+  animation:spUp .5s .75s both;
+}
+.sp-div-line{width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(212,162,58,.4))}
+.sp-div-line.r{background:linear-gradient(270deg,transparent,rgba(212,162,58,.4))}
+.sp-div-diamond{
+  width:6px;height:6px;background:rgba(212,162,58,.6);
+  transform:rotate(45deg);
+}
+.sp-div-dot{width:3px;height:3px;background:rgba(212,162,58,.35);border-radius:50%}
+
+/* Progress bar */
+.sp-prog{
+  width:180px;height:1.5px;background:rgba(255,255,255,.05);
+  border-radius:99px;overflow:hidden;
+  margin-bottom:36px;
+  animation:spUp .4s .8s both;
+}
+.sp-fill{height:100%;background:linear-gradient(90deg,transparent,#D4A23A,#F0C060,transparent);animation:spBar 2.4s .8s ease forwards}
+@keyframes spBar{from{width:0;opacity:0}15%{opacity:1}to{width:100%}}
+
+/* Enter button */
+.sp-enter{
+  display:inline-flex;align-items:center;gap:14px;
+  padding:15px 46px;
+  background:linear-gradient(135deg,#D4A23A,#C08828);
+  color:#1e0e06;
+  border:none;border-radius:3px;
+  font-family:'Cormorant Garamond',serif;
+  font-size:1rem;font-weight:600;letter-spacing:5px;text-transform:uppercase;
+  text-decoration:none;cursor:pointer;
+  transition:all .3s;
+  box-shadow:0 4px 24px rgba(212,162,58,.25),inset 0 1px 0 rgba(255,255,255,.2);
+  animation:spUp .7s 1.6s both;
+  position:relative;overflow:hidden;
+}
+.sp-enter::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+  opacity:0;transition:opacity .3s;
+}
+.sp-enter:hover{transform:translateY(-3px);box-shadow:0 10px 40px rgba(212,162,58,.4),inset 0 1px 0 rgba(255,255,255,.2)}
+.sp-enter:hover::before{opacity:1}
+.sp-enter:active{transform:translateY(0)}
+.sp-enter-skip{
+  display:block;margin-top:18px;
+  font-family:'Cormorant Garamond',serif;
+  font-size:.72rem;font-style:italic;letter-spacing:2px;
+  color:rgba(240,230,211,.25);cursor:pointer;
+  text-decoration:none;transition:color .25s;
+  animation:spUp .5s 2s both;
+}
+.sp-enter-skip:hover{color:rgba(240,230,211,.55)}
+
+/* Year stamp */
+.sp-year{
+  position:absolute;bottom:28px;right:36px;
+  font-family:'Cormorant Garamond',serif;
+  font-size:3rem;font-weight:700;letter-spacing:-1px;
+  color:rgba(212,162,58,.08);pointer-events:none;
+  line-height:1;
+}
+
+@keyframes spPop{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
+@keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ═══ NAV ═══ */
+nav{position:sticky;top:0;z-index:400;height:62px;background:rgba(245,240,232,.93);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 52px;transition:box-shadow .3s}
+nav.sh{box-shadow:0 2px 18px rgba(26,20,16,.07)}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:var(--ink);letter-spacing:2px;text-decoration:none;display:flex;align-items:center;gap:8px}
+.logo-gem{width:22px;height:22px;background:var(--gold);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:white}
+.nav-pills{display:flex;gap:4px}
+.np{padding:6px 13px;border-radius:50px;font-size:.62rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:all .18s}
+.np:hover{background:var(--light);color:var(--text)}
+@media(max-width:740px){.nav-pills{display:none}nav{padding:0 18px}}
+
+/* ═══ HERO ═══ */
+.hero{padding:72px 52px 52px;text-align:center;position:relative;overflow:hidden}
+.hero::before,.hero::after{content:'';position:absolute;border-radius:50%;border:1px solid rgba(201,146,42,.08);pointer-events:none}
+.hero::before{width:700px;height:700px;top:-310px;left:50%;transform:translateX(-50%)}
+.hero::after{width:460px;height:460px;top:-210px;left:50%;transform:translateX(-50%)}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:5px 16px;border-radius:50px;background:rgba(201,146,42,.1);border:1px solid rgba(201,146,42,.2);font-size:.6rem;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,6vw,4.8rem);font-weight:900;color:var(--ink);line-height:.98;letter-spacing:-1px;margin-bottom:12px}
+.hero h1 em{font-style:italic;color:var(--gold);display:block}
+.hero p{font-size:.86rem;font-weight:300;color:var(--muted);max-width:420px;margin:0 auto 42px;line-height:1.75}
+
+/* ═══ SEARCH ═══ */
+.sw{max-width:580px;margin:0 auto}
+.s-tabs{display:flex;gap:2px;background:var(--light);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;padding:4px 4px 0;width:fit-content}
+.st{padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;background:transparent;color:var(--muted);border:none;border-radius:7px 7px 0 0;cursor:pointer;transition:all .18s;white-space:nowrap}
+.st:hover{color:var(--text)}
+.st.on{background:var(--card);color:var(--ink);box-shadow:inset 0 -2px 0 var(--gold)}
+.s-bar{display:flex;align-items:stretch;background:var(--card);border:1.5px solid var(--border);border-radius:0 10px 10px 10px;overflow:hidden;box-shadow:0 4px 16px rgba(26,20,16,.07);transition:border-color .25s,box-shadow .25s}
+.s-bar:focus-within{border-color:rgba(201,146,42,.55);box-shadow:0 4px 16px rgba(201,146,42,.12)}
+.s-ico{padding:0 0 0 18px;display:flex;align-items:center;color:var(--muted);font-size:1rem}
+.s-in{flex:1;padding:15px 12px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:300;background:transparent;color:var(--ink);border:none;outline:none}
+.s-in::placeholder{color:rgba(138,125,110,.4)}
+.s-go{margin:5px;padding:0 24px;background:var(--ink);color:var(--warm);border:none;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;transition:background .18s;white-space:nowrap}
+.s-go:hover{background:var(--gold)}
+
+/* ═══ BROWSE PANELS ═══ */
+.browse-panel{display:none;padding:28px 52px 52px;max-width:1280px;margin:0 auto}
+.browse-panel.active{display:block}
+@media(max-width:700px){.browse-panel{padding:20px 16px 40px}}
+
+.bs-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.bs-label{font-size:.6rem;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.bs-line{flex:1;height:1px;background:var(--border)}
+.bs-count{font-size:.57rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:var(--light);border:1px solid var(--border);padding:3px 10px;border-radius:50px;white-space:nowrap}
+
+/* ═══ CIRCLE ROW ═══ */
+.circles-row{
+  display:flex;gap:18px;
+  overflow-x:auto;padding-bottom:10px;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+.circles-row::-webkit-scrollbar{height:4px}
+.circles-row::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+.ci{
+  flex:0 0 96px;
+  display:flex;flex-direction:column;align-items:center;gap:9px;
+  cursor:pointer;scroll-snap-align:start;
+  animation:ciIn .4s calc(var(--i)*.05s) both;
+}
+@keyframes ciIn{from{opacity:0;transform:scale(.85) translateY(8px)}to{opacity:1;transform:none}}
+
+/* The circle photo */
+.ci-ring{
+  width:84px;height:84px;border-radius:50%;
+  background:var(--light);
+  border:2px solid var(--border);
+  overflow:hidden;position:relative;
+  transition:transform .28s cubic-bezier(.34,1.56,.64,1),border-color .2s,box-shadow .2s;
+  box-shadow:0 2px 8px rgba(26,20,16,.06);
+  flex-shrink:0;
+}
+.ci:hover .ci-ring{transform:scale(1.1) translateY(-4px);border-color:var(--gold);box-shadow:0 10px 26px rgba(201,146,42,.22)}
+.ci.sel .ci-ring{border-color:var(--gold);border-width:2.5px;box-shadow:0 0 0 4px rgba(201,146,42,.14),0 8px 22px rgba(201,146,42,.2)}
+
+/* Meal photo (fill circle) */
+.ci-ring img.cover{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+.ci:hover .ci-ring img.cover{transform:scale(1.1)}
+
+/* Ingredient photo (contain, white bg) */
+.ci-ring img.contain{width:100%;height:100%;object-fit:contain;padding:10px;background:#FAFAF6;display:block}
+
+/* Fallback when image fails */
+.ci-fb{
+  position:absolute;inset:0;border-radius:50%;
+  background:var(--light);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;
+}
+/* Hide fallback by default; show when img has error class */
+.ci-fb{display:none}
+img.broken + .ci-fb{display:flex!important}
+
+/* Selected tick */
+.ci-tick{position:absolute;inset:0;border-radius:50%;background:rgba(201,146,42,.82);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;font-size:1.5rem;color:white;font-weight:700}
+.ci.sel .ci-tick{display:flex}
+
+.ci-name{font-size:.7rem;font-weight:600;color:var(--text);text-align:center;line-height:1.3;transition:color .18s;width:88px}
+.ci:hover .ci-name,.ci.sel .ci-name{color:var(--gold)}
+.ci-code{display:block;font-size:.54rem;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:1px}
+.ci.sel .ci-code{color:var(--gold)}
+
+/* Name tab suggestions */
+.name-sugs{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 8px}
+.sug{padding:8px 18px;border:1.5px solid var(--border);border-radius:50px;font-size:.72rem;font-weight:600;color:var(--text);background:var(--card);cursor:pointer;transition:all .18s;text-decoration:none}
+.sug:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,146,42,.05)}
+
+/* ═══ RESULTS ═══ */
+.results{max-width:1280px;margin:0 auto;padding:0 52px 80px}
+@media(max-width:700px){.results{padding:0 16px 60px}}
+.res-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:26px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.res-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-style:italic;color:var(--ink)}
+.res-cnt{font-size:.6rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+
+/* ═══ RECIPE GRID ═══ */
+.rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:18px}
+.rc{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--border);cursor:pointer;box-shadow:0 2px 10px rgba(26,20,16,.04);transition:transform .3s cubic-bezier(.34,1.3,.64,1),box-shadow .3s;animation:rcIn .45s calc(var(--i)*.07s) both}
+@keyframes rcIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.rc:hover{transform:translateY(-7px) scale(1.01);box-shadow:0 18px 42px rgba(26,20,16,.11)}
+.rc-img{position:relative;height:192px;overflow:hidden}
+.rc-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
+.rc:hover .rc-img img{transform:scale(1.07)}
+.rc-ph{width:100%;height:100%;background:linear-gradient(135deg,var(--light),var(--border));display:flex;align-items:center;justify-content:center;font-size:3rem}
+.rc-cat{position:absolute;bottom:10px;left:10px;padding:4px 10px;background:rgba(245,240,232,.92);backdrop-filter:blur(6px);border-radius:50px;font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink)}
+.rc-body{padding:16px 18px 18px}
+.rc-area{font-size:.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+.rc-name{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--ink);line-height:1.3;margin-bottom:14px}
+.rc-link{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:var(--ink);color:var(--warm);border-radius:50px;font-size:.6rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;text-decoration:none;transition:background .18s}
+.rc-link:hover{background:var(--gold)}
+.rc-link span{transition:transform .18s}
+.rc-link:hover span{transform:translateX(3px)}
+
+/* ═══ EMPTY ═══ */
+.empty{text-align:center;padding:70px 20px}
+.e-ring{width:92px;height:92px;border-radius:50%;background:var(--light);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.6rem;margin:0 auto 20px}
+.e-t{font-family:'Playfair Display',serif;font-size:1.7rem;font-style:italic;color:var(--ink);margin-bottom:10px}
+.e-s{color:var(--muted);font-size:.8rem;font-weight:300;line-height:1.6}
+.flash{background:rgba(184,74,68,.08);border:1px solid rgba(184,74,68,.22);color:var(--rose);padding:12px 20px;border-radius:8px;margin-bottom:22px;font-size:.8rem;text-align:center}
+
+/* ═══ FOOTER ═══ */
+footer{border-top:1px solid var(--border);padding:24px 52px;display:flex;justify-content:space-between;color:var(--muted);font-size:.62rem;letter-spacing:1px;text-transform:uppercase}
+footer a{color:var(--gold);text-decoration:none}
+@media(max-width:600px){footer{flex-direction:column;gap:6px;text-align:center;padding:18px}}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <!-- Ornate corner frame -->
+  <div class="sp-frame"><div class="sp-frame-inner"></div></div>
+  <div class="sp-jewel tl"></div>
+  <div class="sp-jewel tr"></div>
+  <div class="sp-jewel bl"></div>
+  <div class="sp-jewel br"></div>
+
+  <!-- Floating food illustrations -->
+  <div class="sp-blob b1">🥐</div>
+  <div class="sp-blob b2">🍝</div>
+  <div class="sp-blob b3">🥘</div>
+  <div class="sp-blob b4">🍜</div>
+  <div class="sp-blob b5">🫕</div>
+  <div class="sp-blob b6">🍱</div>
+
+  <!-- Radial glow -->
+  <div class="sp-glow"></div>
+
+  <!-- Year stamp -->
+  <div class="sp-year">2025</div>
+
+  <!-- Content -->
+  <div class="sp-medallion">
+    <span class="sp-medallion-icon">🍽️</span>
+  </div>
+
+  <div class="sp-eyebrow">Artisan Recipe Finder</div>
+
+  <div class="sp-brand">Sa<em>v</em>eur</div>
+  <div class="sp-sub">Discover · Cook · Savour</div>
+
+  <div class="sp-divider">
+    <div class="sp-div-line"></div>
+    <div class="sp-div-dot"></div>
+    <div class="sp-div-diamond"></div>
+    <div class="sp-div-dot"></div>
+    <div class="sp-div-line r"></div>
+  </div>
+
+  <div class="sp-prog"><div class="sp-fill"></div></div>
+
+  <a class="sp-enter" href="#" id="sp-btn">Enter the Kitchen</a>
+  <a class="sp-enter-skip" href="#" id="sp-skip">or continue straight in →</a>
+</div>
+
+<!-- NAV -->
+<nav id="nb">
+  <a class="nav-logo" href="/"><div class="logo-gem">✦</div>Saveur</a>
+  <div class="nav-pills">
+    <a class="np" href="/?tab=area">🌍 Cuisines</a>
+    <a class="np" href="/?tab=category">🍽️ Categories</a>
+    <a class="np" href="/?tab=ingredient">🥕 Ingredients</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow">✦ World Cuisine Explorer</div>
+  <h1>Find Your Next<br><em>Favourite Dish</em></h1>
+  <p>Search by name, browse by cuisine, pick a category or ingredient — thousands of recipes await.</p>
+
+  <div class="sw">
+    <div class="s-tabs" id="tabs">
+      <button class="st" data-t="name"       data-panel="panel-name">By Name</button>
+      <button class="st" data-t="category"   data-panel="panel-category">Category</button>
+      <button class="st" data-t="area"       data-panel="panel-area">Cuisine</button>
+      <button class="st" data-t="ingredient" data-panel="panel-ingredient">Ingredient</button>
+    </div>
+    <form action="/search" method="get" id="sf">
+      <input type="hidden" name="type" id="tf" value="{{ search_type }}"/>
+      <div class="s-bar">
+        <div class="s-ico">🔍</div>
+        <input class="s-in" type="text" name="q" id="si"
+          value="{{ query }}" placeholder="Search recipes…" autocomplete="off"/>
+        <button type="submit" class="s-go">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════ PANEL: By Name ════════ -->
+<div class="browse-panel" id="panel-name">
+  <div class="bs-head">
+    <div class="bs-label">Popular Searches</div>
+    <div class="bs-line"></div>
+  </div>
+  <div class="name-sugs">
+    {% for s in ['Pasta','Chicken','Burger','Sushi','Tacos','Biryani','Steak','Salmon','Pizza','Curry','Ramen','Salad'] %}
+    <a class="sug" href="#" onclick="event.preventDefault();document.getElementById('si').value='{{ s }}';document.getElementById('sf').submit()">{{ s }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ PANEL: Category ════════ -->
+<div class="browse-panel" id="panel-category">
+  <div class="bs-head">
+    <div class="bs-label">Browse by Category</div>
+    <div class="bs-line"></div>
+    <div class="bs-count">{{ categories|length }} Categories</div>
+  </div>
+  <div class="circles-row">
+    {% for c in categories %}
+    <div class="ci {% if query==c.name and search_type=='category' %}sel{% endif %}"
+         style="--i:{{ loop.index0 }}" onclick="quickSearch('{{ c.name }}','category')">
+      <div class="ci-ring">
+        {% if c.img %}
+          <img class="cover" src="{{ c.img }}"
+               alt="{{ c.name }}"
+               onerror="this.classList.add('broken')"/>
+        {% endif %}
+        <div class="ci-fb">{{ c.icon }}</div>
+        <div class="ci-tick">✓</div>
+      </div>
+      <div class="ci-name">{{ c.icon }} {{ c.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ PANEL: Cuisine / Area ════════ -->
+<div class="browse-panel" id="panel-area">
+  <div class="bs-head">
+    <div class="bs-label">Browse by Cuisine</div>
+    <div class="bs-line"></div>
+    <div class="bs-count">{{ cuisines|length }} Cuisines</div>
+  </div>
+  <div class="circles-row">
+    {% for c in cuisines %}
+    <div class="ci {% if query==c.name and search_type=='area' %}sel{% endif %}"
+         style="--i:{{ loop.index0 }}" onclick="quickSearch('{{ c.name }}','area')">
+      <div class="ci-ring">
+        {% if c.img %}
+          <img class="cover" src="{{ c.img }}"
+               alt="{{ c.name }}"
+               onerror="this.classList.add('broken')"/>
+        {% endif %}
+        <div class="ci-fb">🌍</div>
+        <div class="ci-tick">✓</div>
+      </div>
+      <div class="ci-name">
+        <span class="ci-code">{{ c.code }}</span>
+        {{ c.name }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ PANEL: Ingredient ════════ -->
+<div class="browse-panel" id="panel-ingredient">
+  <div class="bs-head">
+    <div class="bs-label">Browse by Ingredient</div>
+    <div class="bs-line"></div>
+    <div class="bs-count">{{ ingredients|length }} Ingredients</div>
+  </div>
+  <div class="circles-row">
+    {% for ing in ingredients %}
+    <div class="ci {% if query==ing.name and search_type=='ingredient' %}sel{% endif %}"
+         style="--i:{{ loop.index0 }}" onclick="quickSearch('{{ ing.name }}','ingredient')">
+      <div class="ci-ring">
+        <img class="contain" src="{{ ing.img }}"
+             alt="{{ ing.name }}"
+             onerror="this.classList.add('broken')"/>
+        <div class="ci-fb">🥕</div>
+        <div class="ci-tick">✓</div>
+      </div>
+      <div class="ci-name">{{ ing.name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════════ RESULTS ════════ -->
+<div class="results">
+  {% if error %}<div class="flash">{{ error }}</div>{% endif %}
+
+  {% if meals %}
+  <div class="res-head">
+    <div class="res-title">
+      {% if query %}"{{ query }}"{% else %}Featured Recipes{% endif %}
+    </div>
+    <div class="res-cnt">{{ meals|length }} recipe{% if meals|length != 1 %}s{% endif %}</div>
+  </div>
+  <div class="rg">
+    {% for m in meals %}
+    <div class="rc" style="--i:{{ loop.index0 }}">
+      <div class="rc-img">
+        {% if m.strMealThumb %}
+          <img src="{{ m.strMealThumb }}/preview" alt="{{ m.strMeal }}"
+               onerror="this.parentNode.querySelector('.rc-ph').style.display='flex';this.remove()"/>
+          <div class="rc-ph" style="display:none">🍽️</div>
+        {% else %}
+          <div class="rc-ph">🍽️</div>
+        {% endif %}
+        {% if m.strCategory %}<div class="rc-cat">{{ m.strCategory }}</div>{% endif %}
+      </div>
+      <div class="rc-body">
+        {% if m.strArea %}<div class="rc-area">📍 {{ m.strArea }}</div>{% endif %}
+        <div class="rc-name">{{ m.strMeal }}</div>
+        <a class="rc-link" href="/recipe/{{ m.idMeal }}">View Recipe <span>→</span></a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% elif not error %}
+  <div class="empty">
+    <div class="e-ring">🍴</div>
+    <div class="e-t">Begin your culinary journey</div>
+    <div class="e-s">Click a tab above to browse by cuisine, category or ingredient<br>— or search any dish by name</div>
+  </div>
+  {% endif %}
+</div>
+
+<footer>
+  <div>© 2025 Saveur · Food Recipe Finder</div>
+  <div>Powered by <a href="https://www.themealdb.com" target="_blank">TheMealDB</a></div>
+</footer>
+
+<script>
+/* Splash — shows on fresh load, skips when navigating within the site */
+const splash = document.getElementById('splash');
+function dismissSplash() {
+  sessionStorage.setItem('splashDone', '1');
+  splash.classList.add('gone');
+}
+/* If user already entered this session (e.g. clicked a recipe and came back), skip splash */
+if (sessionStorage.getItem('splashDone')) {
+  splash.classList.add('gone');
+}
+/* Only these two buttons dismiss it */
+document.getElementById('sp-btn').addEventListener('click', (e) => { e.preventDefault(); dismissSplash(); });
+document.getElementById('sp-skip').addEventListener('click', (e) => { e.preventDefault(); dismissSplash(); });
+
+/* Nav shadow */
+window.addEventListener('scroll', () => document.getElementById('nb').classList.toggle('sh', scrollY > 20), {passive:true});
+
+/* Tab + panel system */
+const PLACEHOLDERS = {
+  name:'Search recipes by name…',
+  category:'e.g. Dessert, Seafood, Beef…',
+  area:'e.g. Italian, Japanese, Indian…',
+  ingredient:'e.g. Garlic, Tomato, Salmon…'
+};
+const tabs   = document.querySelectorAll('.st');
+const panels = document.querySelectorAll('.browse-panel');
+const tf     = document.getElementById('tf');
+const si     = document.getElementById('si');
+
+function activateTab(type) {
+  tabs.forEach(b   => b.classList.toggle('on',     b.dataset.t === type));
+  panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + type));
+  tf.value       = type;
+  si.placeholder = PLACEHOLDERS[type] || '';
+}
+
+tabs.forEach(b => b.addEventListener('click', () => { activateTab(b.dataset.t); si.focus(); }));
+
+/* Activate correct tab on load based on Jinja variable */
+activateTab('{{ search_type if search_type else "name" }}');
+
+/* Circle quick-search */
+function quickSearch(val, type) {
+  tf.value = type;
+  si.value = val;
+  document.getElementById('sf').submit();
+}
+
+/* Card scroll-reveal */
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.style.animationPlayState = 'running'; io.unobserve(e.target); }
+  }), {threshold:.08});
+  document.querySelectorAll('.rc').forEach(c => { c.style.animationPlayState = 'paused'; io.observe(c); });
+}
+</script>
+</body>
+</html>
